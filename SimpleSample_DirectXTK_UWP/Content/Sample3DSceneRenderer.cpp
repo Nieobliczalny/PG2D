@@ -16,7 +16,9 @@ Sample3DSceneRenderer::Sample3DSceneRenderer(const std::shared_ptr<DX::DeviceRes
 	//m_degreesPerSecond(45),
 	//m_indexCount(0),
 	//m_tracking(false),
-	m_deviceResources(deviceResources)
+	m_deviceResources(deviceResources),
+	m_gameState(GameState::Initial),
+	m_keyboardTracker(new Keyboard::KeyboardStateTracker)
 {
 	CreateDeviceDependentResources();
 	CreateWindowSizeDependentResources();
@@ -144,90 +146,118 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 	auto windowSize = m_deviceResources->GetOutputSize(); // physical screen resolution
 	auto logicalSize = m_deviceResources->GetLogicalSize(); //DPI dependent resolution
 
-
-
+	switch (m_gameState)
+	{
+	case GameState::Initial:
+	{
+#pragma region Keyboard
+		auto keyboardState = Keyboard::Get().GetState();
+		m_keyboardTracker->Update(keyboardState);
+		//if (tracker->pressed.Enter)
+		if (m_keyboardTracker->IsKeyReleased(Keyboard::Keys::Enter))
+		{
+			m_gameState = GameState::Playing;
+		}
+#pragma endregion Handling Keyboard input
+	}
+	break;
+	case GameState::Paused:
+	{
+#pragma region Keyboard
+		auto keyboardState = Keyboard::Get().GetState();
+		m_keyboardTracker->Update(keyboardState);
+		//if (tracker->pressed.Enter)
+		if (m_keyboardTracker->IsKeyPressed(Keyboard::Keys::Escape))
+		{
+			m_gameState = GameState::Playing;
+		}
+#pragma endregion Handling Keyboard input
+	}
+	break;
+	case GameState::Playing:
+	{
 #pragma region Handling Adding Enemies
 
-	//Enemy enemyTemp(enemyTexture.Get());
-	//enemiesVector.push_back(enemyTemp);
+		//Enemy enemyTemp(enemyTexture.Get());
+		//enemiesVector.push_back(enemyTemp);
 
-	if (enemiesVector.size() < 5)
-	{
-		std::random_device rd;
-		std::default_random_engine random(rd());
+		if (enemiesVector.size() < 5)
+		{
+			std::random_device rd;
+			std::default_random_engine random(rd());
 
-		std::uniform_int_distribution<int> dist(0, (int)windowSize.Height); //Choose distribution of the result (inclusive,inclusive)
-		std::uniform_int_distribution<int> dist2(5, 25); //Choose distribution of the result (inclusive,inclusive)
+			std::uniform_int_distribution<int> dist(0, (int)windowSize.Height); //Choose distribution of the result (inclusive,inclusive)
+			std::uniform_int_distribution<int> dist2(5, 25); //Choose distribution of the result (inclusive,inclusive)
 
-		Enemy enemyTemp(enemyTexture.Get());
-		XMFLOAT2 tempPos{ 0,0 };
-		tempPos.x = windowSize.Width;
-		tempPos.y = dist(random);
-		enemyTemp.setFlightSpeed(dist2(random));
-		enemyTemp.setPosition(tempPos);
-		enemiesVector.push_back(enemyTemp);
-	}
+			Enemy enemyTemp(enemyTexture.Get());
+			XMFLOAT2 tempPos{ 0,0 };
+			tempPos.x = windowSize.Width;
+			tempPos.y = dist(random);
+			enemyTemp.setFlightSpeed(dist2(random));
+			enemyTemp.setPosition(tempPos);
+			enemiesVector.push_back(enemyTemp);
+		}
 
 #pragma endregion
 
 
 #pragma region Gamepad
-	//GamePad
-	auto statePlayerOne = gamePad->GetState(0);
-	if (statePlayerOne.IsConnected())
-	{
-		XMFLOAT2 tempPos = player->getPosition();
-		if (statePlayerOne.IsDPadUpPressed()) {
-			tempPos.y -= 10; //CHANGE TO PROPER OFFSET CALCULATION - USING TIME 
-		}
+		//GamePad
+		auto statePlayerOne = gamePad->GetState(0);
+		if (statePlayerOne.IsConnected())
+		{
+			XMFLOAT2 tempPos = player->getPosition();
+			if (statePlayerOne.IsDPadUpPressed()) {
+				tempPos.y -= 10; //CHANGE TO PROPER OFFSET CALCULATION - USING TIME 
+			}
 
-		if (statePlayerOne.IsDPadDownPressed()) {
-			tempPos.y += 10; ////CHANGE TO PROPER OFFSET CALCULATION - USING TIME 
-		}
+			if (statePlayerOne.IsDPadDownPressed()) {
+				tempPos.y += 10; ////CHANGE TO PROPER OFFSET CALCULATION - USING TIME 
+			}
 
-		if (statePlayerOne.IsDPadLeftPressed()) {
-			tempPos.x -= 10; //CHANGE TO PROPER OFFSET CALCULATION - USING TIME 
+			if (statePlayerOne.IsDPadLeftPressed()) {
+				tempPos.x -= 10; //CHANGE TO PROPER OFFSET CALCULATION - USING TIME 
+			}
+			if (statePlayerOne.IsDPadRightPressed()) {
+				tempPos.x += 10; //CHANGE TO PROPER OFFSET CALCULATION - USING TIME 	
+			}
+			player->setPosition(tempPos);
 		}
-		if (statePlayerOne.IsDPadRightPressed()) {
-			tempPos.x += 10; //CHANGE TO PROPER OFFSET CALCULATION - USING TIME 	
-		}
-		player->setPosition(tempPos);
-	}
 #pragma endregion Handling the Gamepad Input
 
 
 #pragma region Keyboard
-	std::unique_ptr<Keyboard::KeyboardStateTracker> tracker(new Keyboard::KeyboardStateTracker);
+		auto keyboardState = Keyboard::Get().GetState();
+
+		m_keyboardTracker->Update(keyboardState);
+		XMFLOAT2 tempPos = player->getPosition();
+		if (keyboardState.S)
+		{
+
+			tempPos.y += 10;
+		}
+
+		if (keyboardState.W)
+		{
+
+			tempPos.y -= 10;
+		}
+
+		if (keyboardState.A)
+		{
+			tempPos.x -= 10;
+		}
+		if (keyboardState.D)
+		{
+			tempPos.x += 10;
+		}
+		if (m_keyboardTracker->pressed.Escape)
+		{
+			m_gameState = GameState::Paused;
+		}
 
 
-
-	auto keyboardState = Keyboard::Get().GetState();
-
-	tracker->Update(keyboardState);
-	XMFLOAT2 tempPos = player->getPosition();
-	if (tracker->pressed.S)
-	{
-
-		tempPos.y += 10;
-	}
-
-	if (tracker->pressed.W)
-	{
-
-		tempPos.y -= 10;
-	}
-
-	if (tracker->pressed.A)
-	{
-		tempPos.x -= 10;
-	}
-	if (tracker->pressed.D)
-	{
-		tempPos.x += 10;
-	}
-
-
-	player->setPosition(tempPos);
+		player->setPosition(tempPos);
 
 
 #pragma endregion Handling Keyboard input
@@ -236,70 +266,70 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 
 
 #pragma region Paralaxing background
-	//Update Background
-	background->Update((float)timer.GetElapsedSeconds() * 100);
-	clouds->Update((float)timer.GetElapsedSeconds() * 300);
-	clouds2->Update((float)timer.GetElapsedSeconds() * 900);
+		//Update Background
+		background->Update((float)timer.GetElapsedSeconds() * 100);
+		clouds->Update((float)timer.GetElapsedSeconds() * 300);
+		clouds2->Update((float)timer.GetElapsedSeconds() * 900);
 #pragma endregion Handling the paralaxing backgrounds
 
-	//auto test = timer.GetElapsedSeconds();
+		//auto test = timer.GetElapsedSeconds();
 
 
-	//update the animation
-	//animation->Update((float)timer.GetElapsedSeconds());
-	player->Update((float)timer.GetElapsedSeconds());
+		//update the animation
+		//animation->Update((float)timer.GetElapsedSeconds());
+		player->Update((float)timer.GetElapsedSeconds());
 
 
 
 #pragma	region Updating Enemies without AI
-	for (auto & enemy : enemiesVector)
-	{
-		
-		XMFLOAT2 tempPos = enemy.getPosition();
-		tempPos.x -= enemy.getFlightSpeed(); //CHANGE TO PROPER POSITIONING USING TIME
-		enemy.setPosition(tempPos);
-		if (tempPos.x < 0)
+		for (auto & enemy : enemiesVector)
 		{
-			enemy.setVisibility(false);
-		}
 
-	}
+			XMFLOAT2 tempPos = enemy.getPosition();
+			tempPos.x -= enemy.getFlightSpeed(); //CHANGE TO PROPER POSITIONING USING TIME
+			enemy.setPosition(tempPos);
+			if (tempPos.x < 0)
+			{
+				enemy.setVisibility(false);
+			}
+
+		}
 
 #pragma endregion
 
 
 
 #pragma region Updating Enemies with AI
-	// TODO: handle enemy AI using promises and Lambdas
-	std::vector<std::future<DirectX::XMFLOAT2>> futures;
+		// TODO: handle enemy AI using promises and Lambdas
+		std::vector<std::future<DirectX::XMFLOAT2>> futures;
 
-	for (auto& enemy : enemiesVector)
-	{
-		futures.push_back(std::async(std::launch::async,
-			[&]()
+		for (auto& enemy : enemiesVector)
 		{
-			
-			Enemy & currentEnemy = enemy;
-			DirectX::XMFLOAT2 enemyPos{ 0,0 };
-			DirectX::XMFLOAT2 playerPos = player->getPosition();
-			//TODO: Write code for very complicated AI here
+			futures.push_back(std::async(std::launch::async,
+				[&]()
+			{
 
-			return enemyPos;
+				Enemy & currentEnemy = enemy;
+				DirectX::XMFLOAT2 enemyPos{ 0,0 };
+				DirectX::XMFLOAT2 playerPos = player->getPosition();
+				//TODO: Write code for very complicated AI here
 
-		}));
-	}
+				return enemyPos;
 
-	for (auto &future : futures)
-	{
-		//TODO:get results
+			}));
+		}
 
-		auto enemiesIterator = enemiesVector.begin();
+		for (auto &future : futures)
+		{
+			//TODO:get results
 
-		DirectX::XMFLOAT2 tempPos;
-		tempPos = future.get();
-		//(*enemiesIterator).setPosition(tempPos);
-		//enemiesIterator++;
-	}
+			auto enemiesIterator = enemiesVector.begin();
+
+			DirectX::XMFLOAT2 tempPos;
+			tempPos = future.get();
+			//(*enemiesIterator).setPosition(tempPos);
+			//enemiesIterator++;
+		}
 
 #pragma endregion Handling Enemy AI using std::async and std::Future. Also using C++11 Lambdas
 
@@ -307,59 +337,79 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 
 
 #pragma region Collisions
-	collisionString = L"There is no collision";
-	gamePad->SetVibration(0, 0.f, 0.f);
-	
-	// Collisions of Player with walls
-	for (auto wallsIterator = wallsVector.begin(); wallsIterator < wallsVector.end(); wallsIterator++)
-	{
+		collisionString = L"There is no collision";
+		gamePad->SetVibration(0, 0.f, 0.f);
 
-		(*wallsIterator).Update((float)timer.GetElapsedSeconds());
-		if ((*wallsIterator).isCollidingWith(player->rectangle)) {
-			collisionString = L"There is a collision with the wall";
-
-			gamePad->SetVibration(0, 0.75f, 0.75f);
-		}
-	}
-
-	//Collisions of Enemies with Player
-
-	for (auto &enemy : enemiesVector)
-	{
-		if (enemy.isCollidingWith(player->rectangle))
+		// Collisions of Player with walls
+		for (auto wallsIterator = wallsVector.begin(); wallsIterator < wallsVector.end(); wallsIterator++)
 		{
-			enemy.setVisibility (false);
+
+			(*wallsIterator).Update((float)timer.GetElapsedSeconds());
+			if ((*wallsIterator).isCollidingWith(player->rectangle)) {
+				collisionString = L"There is a collision with the wall";
+
+				gamePad->SetVibration(0, 0.75f, 0.75f);
+				m_gameState = GameState::Finished;
+			}
 		}
 
-	}
+		//Collisions of Enemies with Player
+
+		for (auto &enemy : enemiesVector)
+		{
+			if (enemy.isCollidingWith(player->rectangle))
+			{
+				enemy.setVisibility(false);
+				m_gameState = GameState::Finished;
+			}
+
+		}
 
 
-	//Collisions with Enemies with Walls
+		//Collisions with Enemies with Walls
 
 
 
 
 #pragma endregion Handling collision detection + simple GamePad rumble on crash
-	
+
 #pragma region	Final update for enemies
 
-	for (auto it = enemiesVector.begin(); it < enemiesVector.end();)
-	{
-		if (it->isVisible() == false)
+		for (auto it = enemiesVector.begin(); it < enemiesVector.end();)
 		{
-			it = enemiesVector.erase(it);
-		}
-		else
-		{
-			it->Update((float)timer.GetElapsedSeconds());
-			it++;
-		}
+			if (it->isVisible() == false)
+			{
+				it = enemiesVector.erase(it);
+			}
+			else
+			{
+				it->Update((float)timer.GetElapsedSeconds());
+				it++;
+			}
 
-	}
+		}
 #pragma endregion
 
 
-
+	}
+	break;
+	case GameState::Finished:
+	{
+#pragma region Keyboard
+		auto keyboardState = Keyboard::Get().GetState();
+		m_keyboardTracker->Update(keyboardState);
+		if (m_keyboardTracker->pressed.Enter)
+		{
+			player->setPosition(300, 512);
+			enemiesVector.clear();
+			wallsVector.clear();
+			wallsVector.emplace_back(Wall(logicalSize, XMFLOAT2(logicalSize.Width, 0), pipeTexture.Get()));
+			m_gameState = GameState::Playing;
+		}
+#pragma endregion Handling Keyboard input
+	}
+		break;
+	}
 
 }
 
@@ -386,54 +436,84 @@ void Sample3DSceneRenderer::Render()
 	// Set render targets to the screen.
 	ID3D11RenderTargetView *const targets[1] = { m_deviceResources->GetBackBufferRenderTargetView() };
 	context->OMSetRenderTargets(1, targets, m_deviceResources->GetDepthStencilView());
-
 	D3D11_TEXTURE2D_DESC pDesc;
 	Microsoft::WRL::ComPtr<ID3D11Resource> res;
-	//1.) -----------------
-	//m_texture->GetResource(&res);
-	//((ID3D11Texture2D*)res.Get())->GetDesc(&pDesc); // Usually dangerous!
-
-	//2.) -----------------
-	m_texture->GetResource(res.GetAddressOf());
 	Microsoft::WRL::ComPtr<ID3D11Texture2D> text2D;
-	res.As(&text2D);
-	text2D->GetDesc(&pDesc);
 
-	auto height = pDesc.Height; //texture height
-	auto width = pDesc.Width; //texture width
-
-	auto windowSize = m_deviceResources->GetOutputSize(); // physical screen resolution
-	auto logicalSize = m_deviceResources->GetLogicalSize(); //DPI dependent resolution
-
-															// Draw sprites
-	m_sprites->Begin();
-
-	background->Draw(m_sprites.get());
-	clouds->Draw(m_sprites.get());
-
-	//Drawing walls
-
-	for (auto& wall : wallsVector)
+	switch (m_gameState)
 	{
-		wall.Draw(m_sprites.get());
-	}
-
-	//wall->Draw(m_sprites.get());
-	//wall2->Draw(m_sprites.get());
-	player->Draw(m_sprites.get());
-
-	for (auto& enemy : enemiesVector)
+	case GameState::Initial:
 	{
-		enemy.Draw(m_sprites.get());
-
+		std::wstring startLabel = L"Press ENTER to begin";
+		m_sprites->Begin();
+		m_font->DrawString(m_sprites.get(), startLabel.c_str(), XMFLOAT2(100, 10), Colors::Yellow);
+		m_sprites->End();
 	}
+		break;
+	case GameState::Paused:
+	case GameState::Playing:
+	{
+		//1.) -----------------
+		//m_texture->GetResource(&res);
+		//((ID3D11Texture2D*)res.Get())->GetDesc(&pDesc); // Usually dangerous!
+
+		//2.) -----------------
+		m_texture->GetResource(res.GetAddressOf());
+		res.As(&text2D);
+		text2D->GetDesc(&pDesc);
+
+		auto height = pDesc.Height; //texture height
+		auto width = pDesc.Width; //texture width
+
+		auto windowSize = m_deviceResources->GetOutputSize(); // physical screen resolution
+		auto logicalSize = m_deviceResources->GetLogicalSize(); //DPI dependent resolution
+
+																// Draw sprites
+		m_sprites->Begin();
+
+		background->Draw(m_sprites.get());
+		clouds->Draw(m_sprites.get());
+
+		//Drawing walls
+
+		for (auto& wall : wallsVector)
+		{
+			wall.Draw(m_sprites.get());
+		}
+
+		//wall->Draw(m_sprites.get());
+		//wall2->Draw(m_sprites.get());
+		player->Draw(m_sprites.get());
+
+		for (auto& enemy : enemiesVector)
+		{
+			enemy.Draw(m_sprites.get());
+
+		}
 
 
-	clouds2->Draw(m_sprites.get());
+		clouds2->Draw(m_sprites.get());
 
-	m_font->DrawString(m_sprites.get(), collisionString.c_str(), XMFLOAT2(100, 10), Colors::Yellow);
-	m_sprites->End();
+		m_font->DrawString(m_sprites.get(), collisionString.c_str(), XMFLOAT2(100, 10), Colors::Yellow);
 
+		if (m_gameState == GameState::Paused)
+		{
+			std::wstring startLabel = L"Press Escape to continue";
+			m_font->DrawString(m_sprites.get(), startLabel.c_str(), XMFLOAT2(100, 100), Colors::Yellow);
+		}
+
+		m_sprites->End();
+	}
+	break;
+	case GameState::Finished:
+	{
+		std::wstring startLabel = L"Game Over! Press ENTER to start again";
+		m_sprites->Begin();
+		m_font->DrawString(m_sprites.get(), startLabel.c_str(), XMFLOAT2(100, 10), Colors::Yellow);
+		m_sprites->End();
+	}
+	break;
+}
 
 }
 

@@ -25,6 +25,14 @@
 
 namespace SimpleSample_DirectXTK_UWP
 {
+	enum class GameState
+	{
+		Initial,
+		Paused,
+		Playing,
+		Finished
+	};
+
 	// This sample renderer instantiates a basic rendering pipeline.
 	class Sample3DSceneRenderer
 	{
@@ -116,6 +124,9 @@ namespace SimpleSample_DirectXTK_UWP
 		float                                                                   m_audioTimerAcc;
 
 		bool                                                                    m_retryDefault;
+
+		GameState																m_gameState;
+		std::unique_ptr<Keyboard::KeyboardStateTracker>							m_keyboardTracker;
 
 
 	};

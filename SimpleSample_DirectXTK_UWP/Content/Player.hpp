@@ -102,8 +102,8 @@ private:
 	void updateBoundingRect()
 	{
 		//TODO: proper updating when rotating player object
-		rectangle.X = position.x - texture->origin.x;
-		rectangle.Y = position.y - texture->origin.y;
+		rectangle.X = position.x;
+		rectangle.Y = position.y;
 		rectangle.Height = height;
 		rectangle.Width = width;
 	}
